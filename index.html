@@ -563,7 +563,7 @@
       <div class="stats hidden" id="stats">
         <span>共 <strong id="total-count">0</strong> 条消息</span>
         <span>Tara: <strong id="user-count">0</strong></span>
-        <span>Claude: <strong id="assistant-count">0</strong></span>
+        <span>Assistant: <strong id="assistant-count">0</strong></span>
         <span>当前显示: <strong id="filtered-count">0</strong></span>
       </div>
     </div>
@@ -706,7 +706,7 @@
       div.innerHTML = `
         <div class="message-inner">
           <div class="message-meta">
-            ${isUser ? 'Tara' : 'Claude'} · ${formatTimestamp(msg.timestamp)}
+            ${isUser ? 'Tara' : 'Assistant'} · ${formatTimestamp(msg.timestamp)}
           </div>
           <div class="message-content">
             ${renderMarkdown(msg.content)}
