@@ -1,0 +1,921 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chat Archive Viewer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Crimson+Text:ital,wght@0,400;0,600;1,400&family=Playfair+Display:wght@500;600&family=Noto+Sans+SC:wght@300;400;500&display=swap" rel="stylesheet">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: 'Noto Sans SC', -apple-system, BlinkMacSystemFont, sans-serif;
+      background: linear-gradient(135deg, #fef3c7 0%, #f5f5f4 50%, #ffedd5 100%);
+      min-height: 100vh;
+      color: #44403c;
+    }
+    
+    /* Header */
+    .header {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      backdrop-filter: blur(12px);
+      background: rgba(254, 243, 199, 0.8);
+      border-bottom: 1px solid rgba(217, 119, 6, 0.2);
+      padding: 1rem;
+    }
+    
+    .header-inner {
+      max-width: 900px;
+      margin: 0 auto;
+    }
+    
+    .header-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 1rem;
+    }
+    
+    .title {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.75rem;
+      color: #78350f;
+    }
+    
+    .title .subtitle {
+      font-size: 1rem;
+      color: rgba(180, 83, 9, 0.6);
+      font-weight: normal;
+      margin-left: 0.75rem;
+    }
+    
+    .export-btn {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.5rem 1rem;
+      background: #78350f;
+      color: #fef3c7;
+      border: none;
+      border-radius: 0.5rem;
+      cursor: pointer;
+      font-size: 0.875rem;
+      transition: background 0.2s;
+    }
+    
+    .export-btn:hover {
+      background: #92400e;
+    }
+    
+    .stats {
+      display: flex;
+      gap: 1.5rem;
+      margin-top: 0.75rem;
+      font-size: 0.875rem;
+      color: #78716c;
+      flex-wrap: wrap;
+    }
+    
+    .stats strong {
+      color: #78350f;
+    }
+    
+    /* Main */
+    main {
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 1.5rem 1rem;
+    }
+    
+    /* Upload Area */
+    .upload-area {
+      border: 2px dashed rgba(217, 119, 6, 0.3);
+      border-radius: 1rem;
+      padding: 4rem 2rem;
+      text-align: center;
+      background: rgba(255, 255, 255, 0.3);
+      transition: all 0.3s;
+      cursor: pointer;
+    }
+    
+    .upload-area:hover,
+    .upload-area.dragging {
+      border-color: #d97706;
+      background: rgba(254, 243, 199, 0.5);
+    }
+    
+    .upload-icon {
+      font-size: 4rem;
+      margin-bottom: 1rem;
+    }
+    
+    .upload-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.25rem;
+      color: #78350f;
+      margin-bottom: 0.5rem;
+    }
+    
+    .upload-hint {
+      color: #78716c;
+      margin-bottom: 1rem;
+    }
+    
+    .upload-btn {
+      display: inline-block;
+      padding: 0.75rem 1.5rem;
+      background: #78350f;
+      color: #fef3c7;
+      border-radius: 0.5rem;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    
+    .upload-btn:hover {
+      background: #92400e;
+    }
+    
+    #file-input {
+      display: none;
+    }
+    
+    /* Filter Bar */
+    .filter-bar {
+      background: rgba(255, 255, 255, 0.6);
+      backdrop-filter: blur(8px);
+      border-radius: 1rem;
+      padding: 1rem;
+      margin-bottom: 1.5rem;
+      border: 1px solid rgba(217, 119, 6, 0.1);
+    }
+    
+    .filter-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      align-items: flex-end;
+    }
+    
+    .filter-group {
+      flex: 1;
+      min-width: 200px;
+    }
+    
+    .filter-group label {
+      display: block;
+      font-size: 0.75rem;
+      color: #78716c;
+      margin-bottom: 0.25rem;
+    }
+    
+    .search-wrapper {
+      position: relative;
+    }
+    
+    .search-icon {
+      position: absolute;
+      left: 0.75rem;
+      top: 50%;
+      transform: translateY(-50%);
+      color: #a8a29e;
+      width: 1rem;
+      height: 1rem;
+    }
+    
+    .search-input {
+      width: 100%;
+      padding: 0.5rem 0.75rem 0.5rem 2.25rem;
+      border: 1px solid rgba(217, 119, 6, 0.2);
+      border-radius: 0.5rem;
+      background: rgba(255, 255, 255, 0.8);
+      font-size: 0.875rem;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    
+    .search-input:focus {
+      border-color: #d97706;
+      box-shadow: 0 0 0 3px rgba(217, 119, 6, 0.1);
+    }
+    
+    .date-row {
+      display: flex;
+      align-items: flex-end;
+      gap: 0.5rem;
+    }
+    
+    .date-input {
+      padding: 0.5rem 0.75rem;
+      border: 1px solid rgba(217, 119, 6, 0.2);
+      border-radius: 0.5rem;
+      background: rgba(255, 255, 255, 0.8);
+      font-size: 0.875rem;
+      outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    
+    .date-input:focus {
+      border-color: #d97706;
+      box-shadow: 0 0 0 3px rgba(217, 119, 6, 0.1);
+    }
+    
+    .date-separator {
+      color: #a8a29e;
+      padding-bottom: 0.5rem;
+    }
+    
+    .reset-btn {
+      padding: 0.5rem 1rem;
+      background: transparent;
+      color: #b45309;
+      border: none;
+      border-radius: 0.5rem;
+      cursor: pointer;
+      font-size: 0.875rem;
+      transition: background 0.2s;
+    }
+    
+    .reset-btn:hover {
+      background: rgba(217, 119, 6, 0.1);
+    }
+    
+    /* Messages Container */
+    .messages-container {
+      background: rgba(255, 255, 255, 0.4);
+      backdrop-filter: blur(8px);
+      border-radius: 1rem;
+      padding: 1.5rem;
+      border: 1px solid rgba(217, 119, 6, 0.1);
+      min-height: 400px;
+      max-height: 70vh;
+      overflow-y: auto;
+    }
+    
+    .messages-container::-webkit-scrollbar {
+      width: 6px;
+    }
+    
+    .messages-container::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    
+    .messages-container::-webkit-scrollbar-thumb {
+      background: rgba(180, 140, 100, 0.3);
+      border-radius: 3px;
+    }
+    
+    .messages-container::-webkit-scrollbar-thumb:hover {
+      background: rgba(180, 140, 100, 0.5);
+    }
+    
+    /* Message */
+    .message {
+      display: flex;
+      margin-bottom: 1rem;
+      animation: fadeIn 0.3s ease-out;
+    }
+    
+    @keyframes fadeIn {
+      from {
+        opacity: 0;
+        transform: translateY(8px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    
+    .message.user {
+      justify-content: flex-end;
+    }
+    
+    .message.assistant {
+      justify-content: flex-start;
+    }
+    
+    .message-inner {
+      max-width: 75%;
+    }
+    
+    .message-meta {
+      font-size: 0.75rem;
+      margin-bottom: 0.25rem;
+    }
+    
+    .message.user .message-meta {
+      text-align: right;
+      color: #a8a29e;
+    }
+    
+    .message.assistant .message-meta {
+      text-align: left;
+      color: rgba(180, 83, 9, 0.6);
+    }
+    
+    .message-content {
+      padding: 0.75rem 1rem;
+      line-height: 1.6;
+      word-break: break-word;
+    }
+    
+    .message.user .message-content {
+      background: #d6d3d1;
+      color: #1c1917;
+      border-radius: 1rem 1rem 0.25rem 1rem;
+    }
+    
+    .message.assistant .message-content {
+      background: transparent;
+      color: #44403c;
+      border-left: 2px solid rgba(217, 119, 6, 0.3);
+      border-radius: 0;
+      padding-left: 1rem;
+      font-family: 'Crimson Text', Georgia, serif;
+      font-size: 1rem;
+    }
+    
+    .message-content strong {
+      font-weight: 600;
+    }
+    
+    .message-content em {
+      font-style: italic;
+    }
+    
+    .message-content code {
+      background: rgba(0, 0, 0, 0.08);
+      padding: 0.125rem 0.375rem;
+      border-radius: 0.25rem;
+      font-family: 'Fira Code', 'Consolas', monospace;
+      font-size: 0.9em;
+    }
+    
+    .message-content pre {
+      background: #1a1a1a;
+      color: #e0e0e0;
+      padding: 0.75rem 1rem;
+      border-radius: 0.5rem;
+      overflow-x: auto;
+      font-family: 'Fira Code', 'Consolas', monospace;
+      font-size: 0.85rem;
+      margin: 0.5rem 0;
+    }
+    
+    /* Empty State */
+    .empty-state {
+      text-align: center;
+      padding: 4rem 1rem;
+      color: #a8a29e;
+    }
+    
+    .empty-icon {
+      font-size: 3rem;
+      margin-bottom: 1rem;
+    }
+    
+    /* Modal */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.4);
+      backdrop-filter: blur(4px);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+      padding: 1rem;
+    }
+    
+    .modal-overlay.active {
+      display: flex;
+    }
+    
+    .modal {
+      background: #fef3c7;
+      border-radius: 1rem;
+      padding: 1.5rem;
+      max-width: 400px;
+      width: 100%;
+      border: 1px solid rgba(217, 119, 6, 0.2);
+      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+    }
+    
+    .modal-title {
+      font-family: 'Playfair Display', serif;
+      font-size: 1.25rem;
+      color: #78350f;
+      margin-bottom: 1rem;
+    }
+    
+    .modal-row {
+      display: flex;
+      gap: 0.75rem;
+      margin-bottom: 1rem;
+    }
+    
+    .modal-group {
+      flex: 1;
+    }
+    
+    .modal-group label {
+      display: block;
+      font-size: 0.75rem;
+      color: #78716c;
+      margin-bottom: 0.25rem;
+    }
+    
+    .modal-group input {
+      width: 100%;
+      padding: 0.5rem 0.75rem;
+      border: 1px solid rgba(217, 119, 6, 0.2);
+      border-radius: 0.5rem;
+      background: white;
+      font-size: 0.875rem;
+      outline: none;
+    }
+    
+    .modal-group input:focus {
+      border-color: #d97706;
+      box-shadow: 0 0 0 3px rgba(217, 119, 6, 0.1);
+    }
+    
+    .modal-buttons {
+      display: flex;
+      gap: 0.75rem;
+      margin-bottom: 0.75rem;
+    }
+    
+    .modal-btn {
+      flex: 1;
+      padding: 0.625rem 1rem;
+      border: none;
+      border-radius: 0.5rem;
+      cursor: pointer;
+      font-size: 0.875rem;
+      transition: background 0.2s;
+    }
+    
+    .modal-btn.primary {
+      background: #78350f;
+      color: #fef3c7;
+    }
+    
+    .modal-btn.primary:hover {
+      background: #92400e;
+    }
+    
+    .modal-btn.secondary {
+      background: #d97706;
+      color: #fef3c7;
+    }
+    
+    .modal-btn.secondary:hover {
+      background: #b45309;
+    }
+    
+    .modal-cancel {
+      width: 100%;
+      padding: 0.5rem;
+      background: transparent;
+      color: #78716c;
+      border: none;
+      border-radius: 0.5rem;
+      cursor: pointer;
+      font-size: 0.875rem;
+      transition: background 0.2s;
+    }
+    
+    .modal-cancel:hover {
+      background: rgba(0, 0, 0, 0.05);
+    }
+    
+    /* Footer */
+    footer {
+      text-align: center;
+      padding: 1.5rem;
+      font-size: 0.75rem;
+      color: #a8a29e;
+    }
+    
+    /* Responsive */
+    @media (max-width: 640px) {
+      .header-top {
+        flex-direction: column;
+        align-items: flex-start;
+      }
+      
+      .filter-row {
+        flex-direction: column;
+      }
+      
+      .filter-group {
+        width: 100%;
+      }
+      
+      .date-row {
+        width: 100%;
+      }
+      
+      .date-input {
+        flex: 1;
+      }
+      
+      .message-inner {
+        max-width: 85%;
+      }
+      
+      .messages-container {
+        padding: 1rem;
+      }
+    }
+    
+    .hidden {
+      display: none !important;
+    }
+  </style>
+</head>
+<body>
+  <!-- Header -->
+  <header class="header">
+    <div class="header-inner">
+      <div class="header-top">
+        <h1 class="title">
+          Chat Archive
+          <span class="subtitle" id="character-name"></span>
+        </h1>
+        <button class="export-btn hidden" id="export-btn" onclick="openExportModal()">
+          <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+          </svg>
+          导出 TXT
+        </button>
+      </div>
+      <div class="stats hidden" id="stats">
+        <span>共 <strong id="total-count">0</strong> 条消息</span>
+        <span>User: <strong id="user-count">0</strong></span>
+        <span>Assistant: <strong id="assistant-count">0</strong></span>
+        <span>当前显示: <strong id="filtered-count">0</strong></span>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <!-- Upload Area -->
+    <div class="upload-area" id="upload-area">
+      <div class="upload-icon">📜</div>
+      <h2 class="upload-title">拖放 JSON 文件到这里</h2>
+      <p class="upload-hint">或者点击下方按钮选择文件</p>
+      <label class="upload-btn">
+        选择文件
+        <input type="file" id="file-input" accept=".json">
+      </label>
+    </div>
+
+    <!-- Filter Bar -->
+    <div class="filter-bar hidden" id="filter-bar">
+      <div class="filter-row">
+        <div class="filter-group">
+          <label>搜索内容</label>
+          <div class="search-wrapper">
+            <svg class="search-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+            </svg>
+            <input type="text" class="search-input" id="search-input" placeholder="输入关键词筛选...">
+          </div>
+        </div>
+        <div class="date-row">
+          <div class="filter-group" style="flex: none; min-width: auto;">
+            <label>开始日期</label>
+            <input type="date" class="date-input" id="start-date">
+          </div>
+          <span class="date-separator">—</span>
+          <div class="filter-group" style="flex: none; min-width: auto;">
+            <label>结束日期</label>
+            <input type="date" class="date-input" id="end-date">
+          </div>
+        </div>
+        <button class="reset-btn" onclick="resetFilters()">重置</button>
+      </div>
+    </div>
+
+    <!-- Messages -->
+    <div class="messages-container hidden" id="messages-container"></div>
+  </main>
+
+  <!-- Export Modal -->
+  <div class="modal-overlay" id="export-modal">
+    <div class="modal">
+      <h3 class="modal-title">导出聊天记录</h3>
+      <div class="modal-row">
+        <div class="modal-group">
+          <label>开始日期</label>
+          <input type="date" id="export-start-date">
+        </div>
+        <div class="modal-group">
+          <label>结束日期</label>
+          <input type="date" id="export-end-date">
+        </div>
+      </div>
+      <div class="modal-buttons">
+        <button class="modal-btn primary" onclick="exportChat(false)">导出选定日期</button>
+        <button class="modal-btn secondary" onclick="exportChat(true)">导出全部</button>
+      </div>
+      <button class="modal-cancel" onclick="closeExportModal()">取消</button>
+    </div>
+  </div>
+
+  <footer>
+    Chat Archive Viewer · Made with ♡ by Claude
+  </footer>
+
+  <script>
+    // Global state
+    let chatData = null;
+    let originalMessages = [];
+
+    // DOM elements
+    const uploadArea = document.getElementById('upload-area');
+    const fileInput = document.getElementById('file-input');
+    const filterBar = document.getElementById('filter-bar');
+    const messagesContainer = document.getElementById('messages-container');
+    const exportBtn = document.getElementById('export-btn');
+    const statsEl = document.getElementById('stats');
+    const characterNameEl = document.getElementById('character-name');
+    const searchInput = document.getElementById('search-input');
+    const startDateInput = document.getElementById('start-date');
+    const endDateInput = document.getElementById('end-date');
+    const exportModal = document.getElementById('export-modal');
+    const exportStartDate = document.getElementById('export-start-date');
+    const exportEndDate = document.getElementById('export-end-date');
+
+    // Format timestamp
+    function formatTimestamp(ts) {
+      const date = new Date(ts);
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      const hours = String(date.getHours()).padStart(2, '0');
+      const minutes = String(date.getMinutes()).padStart(2, '0');
+      const seconds = String(date.getSeconds()).padStart(2, '0');
+      return `${year}/${month}/${day} ${hours}:${minutes}:${seconds}`;
+    }
+
+    // Format date for input
+    function formatDateForInput(ts) {
+      const date = new Date(ts);
+      return date.toISOString().split('T')[0];
+    }
+
+    // Simple markdown renderer
+    function renderMarkdown(text) {
+      if (!text) return '';
+      
+      return text
+        // Escape HTML
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        // Code blocks
+        .replace(/```(\w*)\n?([\s\S]*?)```/g, '<pre>$2</pre>')
+        // Bold
+        .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+        // Italic
+        .replace(/\*(.+?)\*/g, '<em>$1</em>')
+        // Inline code
+        .replace(/`([^`]+)`/g, '<code>$1</code>')
+        // Line breaks
+        .replace(/\n/g, '<br>');
+    }
+
+    // Create message element
+    function createMessageElement(msg) {
+      const isUser = msg.role === 'user';
+      const div = document.createElement('div');
+      div.className = `message ${isUser ? 'user' : 'assistant'}`;
+      
+      div.innerHTML = `
+        <div class="message-inner">
+          <div class="message-meta">
+            ${isUser ? 'user' : 'assistant'} · ${formatTimestamp(msg.timestamp)}
+          </div>
+          <div class="message-content">
+            ${renderMarkdown(msg.content)}
+          </div>
+        </div>
+      `;
+      
+      return div;
+    }
+
+    // Update stats
+    function updateStats(filtered) {
+      document.getElementById('total-count').textContent = originalMessages.length;
+      document.getElementById('user-count').textContent = originalMessages.filter(m => m.role === 'user').length;
+      document.getElementById('assistant-count').textContent = originalMessages.filter(m => m.role === 'assistant').length;
+      document.getElementById('filtered-count').textContent = filtered.length;
+    }
+
+    // Render messages
+    function renderMessages() {
+      let messages = [...originalMessages];
+      
+      // Search filter
+      const query = searchInput.value.toLowerCase().trim();
+      if (query) {
+        messages = messages.filter(m => m.content.toLowerCase().includes(query));
+      }
+      
+      // Date filter
+      const startDate = startDateInput.value;
+      const endDate = endDateInput.value;
+      
+      if (startDate) {
+        const start = new Date(startDate).getTime();
+        messages = messages.filter(m => m.timestamp >= start);
+      }
+      
+      if (endDate) {
+        const end = new Date(endDate).getTime() + 86400000;
+        messages = messages.filter(m => m.timestamp < end);
+      }
+      
+      // Update stats
+      updateStats(messages);
+      
+      // Render
+      messagesContainer.innerHTML = '';
+      
+      if (messages.length === 0) {
+        messagesContainer.innerHTML = `
+          <div class="empty-state">
+            <div class="empty-icon">🔍</div>
+            <p>没有找到匹配的消息</p>
+          </div>
+        `;
+        return;
+      }
+      
+      messages.forEach(msg => {
+        messagesContainer.appendChild(createMessageElement(msg));
+      });
+    }
+
+    // Handle file upload
+    function handleFile(file) {
+      if (!file || !file.name.endsWith('.json')) {
+        alert('请选择 JSON 文件');
+        return;
+      }
+      
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        try {
+          chatData = JSON.parse(e.target.result);
+          originalMessages = chatData.chatHistory || [];
+          
+          // Update UI
+          uploadArea.classList.add('hidden');
+          filterBar.classList.remove('hidden');
+          messagesContainer.classList.remove('hidden');
+          exportBtn.classList.remove('hidden');
+          statsEl.classList.remove('hidden');
+          
+          // Set character name
+          if (chatData.characterName) {
+            characterNameEl.textContent = `with ${chatData.characterName}`;
+          }
+          
+          // Set date range
+          if (originalMessages.length > 0) {
+            const timestamps = originalMessages.map(m => m.timestamp);
+            const minDate = formatDateForInput(Math.min(...timestamps));
+            const maxDate = formatDateForInput(Math.max(...timestamps));
+            startDateInput.value = minDate;
+            endDateInput.value = maxDate;
+            exportStartDate.value = minDate;
+            exportEndDate.value = maxDate;
+          }
+          
+          // Render
+          renderMessages();
+        } catch (err) {
+          alert('JSON 解析错误: ' + err.message);
+        }
+      };
+      reader.readAsText(file);
+    }
+
+    // Reset filters
+    function resetFilters() {
+      searchInput.value = '';
+      if (originalMessages.length > 0) {
+        const timestamps = originalMessages.map(m => m.timestamp);
+        startDateInput.value = formatDateForInput(Math.min(...timestamps));
+        endDateInput.value = formatDateForInput(Math.max(...timestamps));
+      }
+      renderMessages();
+    }
+
+    // Export modal
+    function openExportModal() {
+      exportModal.classList.add('active');
+    }
+
+    function closeExportModal() {
+      exportModal.classList.remove('active');
+    }
+
+    // Export chat
+    function exportChat(exportAll) {
+      if (!originalMessages.length) return;
+      
+      let messages = [...originalMessages];
+      let filename = `chat_${chatData.characterName || 'export'}`;
+      
+      if (!exportAll) {
+        const startDate = exportStartDate.value;
+        const endDate = exportEndDate.value;
+        
+        if (startDate) {
+          const start = new Date(startDate).getTime();
+          messages = messages.filter(m => m.timestamp >= start);
+        }
+        if (endDate) {
+          const end = new Date(endDate).getTime() + 86400000;
+          messages = messages.filter(m => m.timestamp < end);
+        }
+        filename += `_${startDate || 'start'}_to_${endDate || 'end'}`;
+      } else {
+        filename += '_full';
+      }
+      
+      // Generate content
+      let content = `聊天记录导出\n`;
+      content += `角色: ${chatData.characterName || 'Unknown'}\n`;
+      content += `导出时间: ${new Date().toLocaleString('zh-CN')}\n`;
+      content += `消息数量: ${messages.length}\n`;
+      content += `${'─'.repeat(50)}\n\n`;
+      
+      messages.forEach(m => {
+        const time = formatTimestamp(m.timestamp);
+        const role = m.role === 'user' ? 'Tara' : 'Assistant';
+        content += `[${time}] ${role}:\n${m.content}\n\n`;
+      });
+      
+      // Download
+      const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `${filename}.txt`;
+      a.click();
+      URL.revokeObjectURL(url);
+      closeExportModal();
+    }
+
+    // Event listeners
+    fileInput.addEventListener('change', (e) => {
+      handleFile(e.target.files[0]);
+    });
+
+    uploadArea.addEventListener('click', () => {
+      fileInput.click();
+    });
+
+    uploadArea.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      uploadArea.classList.add('dragging');
+    });
+
+    uploadArea.addEventListener('dragleave', () => {
+      uploadArea.classList.remove('dragging');
+    });
+
+    uploadArea.addEventListener('drop', (e) => {
+      e.preventDefault();
+      uploadArea.classList.remove('dragging');
+      handleFile(e.dataTransfer.files[0]);
+    });
+
+    searchInput.addEventListener('input', renderMessages);
+    startDateInput.addEventListener('change', renderMessages);
+    endDateInput.addEventListener('change', renderMessages);
+
+    exportModal.addEventListener('click', (e) => {
+      if (e.target === exportModal) {
+        closeExportModal();
+      }
+    });
+  </script>
+</body>
+</html>
