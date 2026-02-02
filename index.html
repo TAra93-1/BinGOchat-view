@@ -562,8 +562,8 @@
       </div>
       <div class="stats hidden" id="stats">
         <span>共 <strong id="total-count">0</strong> 条消息</span>
-        <span>Tara: <strong id="user-count">0</strong></span>
-        <span>Assistant: <strong id="assistant-count">0</strong></span>
+        <span>User: <strong id="user-count">0</strong></span>
+        <span>AI: <strong id="assistant-count">0</strong></span>
         <span>当前显示: <strong id="filtered-count">0</strong></span>
       </div>
     </div>
@@ -706,7 +706,7 @@
       div.innerHTML = `
         <div class="message-inner">
           <div class="message-meta">
-            ${isUser ? 'Tara' : 'Assistant'} · ${formatTimestamp(msg.timestamp)}
+            ${isUser ? 'user' : 'assistant'} · ${formatTimestamp(msg.timestamp)}
           </div>
           <div class="message-content">
             ${renderMarkdown(msg.content)}
@@ -868,7 +868,7 @@
       
       messages.forEach(m => {
         const time = formatTimestamp(m.timestamp);
-        const role = m.role === 'user' ? 'Tara' : 'Claude';
+        const role = m.role === 'user' ? 'Tara' : 'Assistant';
         content += `[${time}] ${role}:\n${m.content}\n\n`;
       });
       
